@@ -29,21 +29,62 @@ export function activate(context: vscode.ExtensionContext) {
 	// Command to show the TODO list dropdown
 	const showListDisposable = vscode.commands.registerCommand('todo-list.showList', async () => {
 		// Use the shared todoItems list
-		const addNewOption = "$(add) Add New Task"; // Special option
-		const quickPickItems = [...todoItems, addNewOption]; // Add the option to the list
 
-		const selectedItem = await vscode.window.showQuickPick(quickPickItems, {
-			placeHolder: 'Select a TODO item or Add New', // Updated placeholder
+		// Map todoItems to QuickPickItems with status icons
+		const taskItems: vscode.QuickPickItem[] = todoItems.map(item => {
+			if (item.endsWith(' [DONE]')) {
+				const baseTask = item.replace(' [DONE]', '');
+				return {
+					label: `$(check) ${baseTask}`,
+					description: "Done",
+					originalTask: item // Store original for reference
+				};
+			} else {
+				return {
+					label: item,
+					description: "Pending",
+					originalTask: item // Store original for reference
+				};
+			}
 		});
 
-		if (selectedItem) {
-			if (selectedItem === addNewOption) {
+		// Special option for adding a new task
+		const addNewOptionLabel = "$(add) Add New Task";
+		const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
+
+		const quickPickItems = [...taskItems, addNewOptionItem]; // Combine tasks and add option
+
+		const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
+			placeHolder: 'Select a TODO item or Add New',
+			matchOnDescription: true // Optional: Allow searching description field
+		});
+
+		if (selectedQuickPickItem) {
+			if (selectedQuickPickItem.label === addNewOptionLabel) {
 				// Trigger the Add TODO command if the special option was selected
 				vscode.commands.executeCommand('todo-list.addTodo');
 			} else {
-				// Otherwise, show info about the selected task
-				vscode.window.showInformationMessage(`Selected: ${selectedItem}`);
-				// Add logic here for what to do when an item is selected (optional)
+				// Otherwise, toggle the done status of the selected task
+				const originalTask = selectedQuickPickItem.originalTask;
+				if (originalTask) {
+					const index = todoItems.findIndex(item => item === originalTask);
+					if (index !== -1) {
+						if (originalTask.endsWith(' [DONE]')) {
+							// Mark as pending (remove [DONE])
+							const baseTask = originalTask.replace(' [DONE]', '');
+							todoItems[index] = baseTask;
+							vscode.window.showInformationMessage(`Marked as pending: ${baseTask}`);
+						} else {
+							// Mark as done (append [DONE])
+							todoItems[index] = `${originalTask} [DONE]`;
+							vscode.window.showInformationMessage(`Marked as done: ${originalTask}`);
+						}
+						// Optionally update status bar if the toggled item was the latest one
+						// This simple logic might need refinement for perfect status bar updates
+					} else {
+						vscode.window.showWarningMessage(`Could not find task to toggle: ${originalTask}`);
+					}
+				}
 			}
 		}
 	});
