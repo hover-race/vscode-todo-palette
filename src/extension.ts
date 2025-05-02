@@ -31,6 +31,12 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(disposable);
+
+	const combobulateDisposable = vscode.commands.registerCommand('todo-list.combobulate', () => {
+		vscode.window.showInformationMessage('Combobulating...');
+	});
+
+	context.subscriptions.push(combobulateDisposable);
 }
 
 // This method is called when your extension is deactivated

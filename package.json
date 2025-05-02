@@ -16,6 +16,10 @@
       {
         "command": "todo-list.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "todo-list.combobulate",
+        "title": "Combobulate"
       }
     ]
   },
