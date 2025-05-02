@@ -10,6 +10,9 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "todo-list" is now active!');
 
+	// Simple in-memory storage for TODO items
+	let todoItems: string[] = ['Task A', 'Task B']; // Shared list
+
 	// Create a status bar item
 	const myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
 	myStatusBarItem.text = `$(checklist) TODOs`; // Example text with an icon
@@ -21,11 +24,13 @@ export function activate(context: vscode.ExtensionContext) {
 	// Add the status bar item to the context's subscriptions so it's disposed automatically
 	context.subscriptions.push(myStatusBarItem);
 
+	// --- TODO Commands ---
+
 	// Command to show the TODO list dropdown
 	const showListDisposable = vscode.commands.registerCommand('todo-list.showList', async () => {
-		const items = ['Task A', 'Task B'];
-		const selectedItem = await vscode.window.showQuickPick(items, {
-			placeHolder: 'Select a TODO item',
+		// Use the shared todoItems list
+		const selectedItem = await vscode.window.showQuickPick(todoItems, {
+			placeHolder: 'Select a TODO item to view/manage', // Updated placeholder
 		});
 
 		if (selectedItem) {
@@ -34,6 +39,50 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(showListDisposable);
+
+	// Command to add a new TODO item
+	const addTodoDisposable = vscode.commands.registerCommand('todo-list.addTodo', async () => {
+		const taskDescription = await vscode.window.showInputBox({
+			prompt: "Enter the description of the new TODO task",
+			placeHolder: "e.g., Fix bug #123"
+		});
+
+		if (taskDescription && taskDescription.trim() !== '') {
+			todoItems.push(taskDescription.trim());
+			vscode.window.showInformationMessage(`Added TODO: ${taskDescription.trim()}`);
+			// Optionally, update the status bar or refresh the list view if you have one
+		} else if (taskDescription !== undefined) {
+            // Handle empty input if the user didn't cancel
+            vscode.window.showWarningMessage('Cannot add an empty TODO task.');
+        }
+	});
+	context.subscriptions.push(addTodoDisposable);
+
+	// Command to mark a specific task as done via Quick Pick
+	const markTaskDoneDisposable = vscode.commands.registerCommand('todo-list.markTaskDone', async () => {
+		const undoneItems = todoItems.filter(item => !item.endsWith(' [DONE]'));
+
+		if (undoneItems.length === 0) {
+			vscode.window.showInformationMessage('No pending TODO tasks to mark as done.');
+			return;
+		}
+
+		const selectedItem = await vscode.window.showQuickPick(undoneItems, {
+			placeHolder: 'Select a task to mark as done'
+		});
+
+		if (selectedItem) {
+			// Find the original index in the main list
+			const index = todoItems.findIndex(item => item === selectedItem);
+			if (index !== -1) {
+				todoItems[index] = `${selectedItem} [DONE]`;
+				vscode.window.showInformationMessage(`Marked as done: ${selectedItem}`);
+			} 
+		}
+	});
+	context.subscriptions.push(markTaskDoneDisposable);
+
+	// --- Other Commands ---
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
