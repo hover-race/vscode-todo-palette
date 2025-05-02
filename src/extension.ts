@@ -10,6 +10,17 @@ export function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "todo-list" is now active!');
 
+	// Create a status bar item
+	const myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+	myStatusBarItem.text = `$(checklist) TODOs`; // Example text with an icon
+	myStatusBarItem.tooltip = `View TODO List`;
+	// Optionally, assign a command to run when the item is clicked
+	// myStatusBarItem.command = 'todo-list.showList'; // Example command ID
+	myStatusBarItem.show();
+
+	// Add the status bar item to the context's subscriptions so it's disposed automatically
+	context.subscriptions.push(myStatusBarItem);
+
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
