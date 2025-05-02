@@ -29,13 +29,22 @@ export function activate(context: vscode.ExtensionContext) {
 	// Command to show the TODO list dropdown
 	const showListDisposable = vscode.commands.registerCommand('todo-list.showList', async () => {
 		// Use the shared todoItems list
-		const selectedItem = await vscode.window.showQuickPick(todoItems, {
-			placeHolder: 'Select a TODO item to view/manage', // Updated placeholder
+		const addNewOption = "$(add) Add New Task"; // Special option
+		const quickPickItems = [...todoItems, addNewOption]; // Add the option to the list
+
+		const selectedItem = await vscode.window.showQuickPick(quickPickItems, {
+			placeHolder: 'Select a TODO item or Add New', // Updated placeholder
 		});
 
 		if (selectedItem) {
-			vscode.window.showInformationMessage(`Selected: ${selectedItem}`);
-			// Add logic here for what to do when an item is selected
+			if (selectedItem === addNewOption) {
+				// Trigger the Add TODO command if the special option was selected
+				vscode.commands.executeCommand('todo-list.addTodo');
+			} else {
+				// Otherwise, show info about the selected task
+				vscode.window.showInformationMessage(`Selected: ${selectedItem}`);
+				// Add logic here for what to do when an item is selected (optional)
+			}
 		}
 	});
 	context.subscriptions.push(showListDisposable);
