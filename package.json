@@ -23,17 +23,17 @@
       },
       {
         "command": "todo-list.showList",
-        "title": "Show List",
+        "title": "TODO: Show List",
         "category": "TODO"
       },
       {
         "command": "todo-list.addTodo",
-        "title": "Add Task",
+        "title": "TODO: Add Task",
         "category": "TODO"
       },
       {
         "command": "todo-list.markTaskDone",
-        "title": "Mark Task Done",
+        "title": "TODO: Mark Task Done",
         "category": "TODO"
       }
     ]

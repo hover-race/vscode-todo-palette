@@ -67,17 +67,23 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		const selectedItem = await vscode.window.showQuickPick(undoneItems, {
+		// Add prefix for display
+		const displayItems = undoneItems.map(item => `TODO: ${item}`);
+
+		const selectedDisplayItem = await vscode.window.showQuickPick(displayItems, {
 			placeHolder: 'Select a task to mark as done'
 		});
 
-		if (selectedItem) {
+		if (selectedDisplayItem) {
+			// Remove prefix to get the original item
+			const selectedItem = selectedDisplayItem.replace(/^TODO: /, ''); 
+
 			// Find the original index in the main list
 			const index = todoItems.findIndex(item => item === selectedItem);
 			if (index !== -1) {
 				todoItems[index] = `${selectedItem} [DONE]`;
 				vscode.window.showInformationMessage(`Marked as done: ${selectedItem}`);
-			} 
+			}
 		}
 	});
 	context.subscriptions.push(markTaskDoneDisposable);
