@@ -15,11 +15,25 @@ export function activate(context: vscode.ExtensionContext) {
 	myStatusBarItem.text = `$(checklist) TODOs`; // Example text with an icon
 	myStatusBarItem.tooltip = `View TODO List`;
 	// Optionally, assign a command to run when the item is clicked
-	// myStatusBarItem.command = 'todo-list.showList'; // Example command ID
+	myStatusBarItem.command = 'todo-list.showList'; // Assign the command to show the list
 	myStatusBarItem.show();
 
 	// Add the status bar item to the context's subscriptions so it's disposed automatically
 	context.subscriptions.push(myStatusBarItem);
+
+	// Command to show the TODO list dropdown
+	const showListDisposable = vscode.commands.registerCommand('todo-list.showList', async () => {
+		const items = ['Task A', 'Task B'];
+		const selectedItem = await vscode.window.showQuickPick(items, {
+			placeHolder: 'Select a TODO item',
+		});
+
+		if (selectedItem) {
+			vscode.window.showInformationMessage(`Selected: ${selectedItem}`);
+			// Add logic here for what to do when an item is selected
+		}
+	});
+	context.subscriptions.push(showListDisposable);
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand

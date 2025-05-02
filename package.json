@@ -20,6 +20,10 @@
       {
         "command": "todo-list.combobulate",
         "title": "Combobulate"
+      },
+      {
+        "command": "todo-list.showList",
+        "title": "Show TODO List"
       }
     ]
   },
