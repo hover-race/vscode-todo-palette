@@ -4,6 +4,7 @@
   "description": "TODO list in the Command Palette",
   "version": "0.0.1",
   "publisher": "FoxLabs",
+  "icon": "images/logo.png",
   "engines": {
     "vscode": "^1.85.0"
   },
