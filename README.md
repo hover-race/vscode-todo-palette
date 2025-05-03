@@ -16,35 +16,12 @@ Manage a TODO list directly within the editor
 *   **Plain Text Storage:** Your TODO list is saved as plain text in a `.todo` file in your workspace root. You can directly edit this file, and the extension will automatically reload the changes.
 *   **Status Bar Integration:** Shows the latest pending task in the status bar. Clicking it opens the TODO list. Shows "All tasks done!" when the list is empty or all tasks are completed.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
-For example if there is an image subfolder under your extension project workspace:
++![Animation of TODO list features](images/todo-demo.gif)
 
-\!\[feature X\]\(vs-todo-list.png\)
-\!\[Screenshot\]\(screen2.png\)
-
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-This extension does not currently add any specific settings.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
 
 ### 0.1.0 (Current)
-- Add basic TODO list functionality: add, view, toggle done/pending.
+- Add basic TODO list functionality: add, view, toggle done/pending, clear all tasks.
 - Save list to `.todo` file in the workspace.
 - Status bar integration showing the latest task.
-- Added a "Clear All Tasks" option with confirmation.
 
