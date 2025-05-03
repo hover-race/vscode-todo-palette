@@ -112,7 +112,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			// Update the shared list - crucial to reassign for other commands to see the change
 			todoItems = newItems; 
 			updateStatusBar(todoItems, myStatusBarItem);
-			vscode.window.showInformationMessage('TODO list reloaded from file.'); // Optional user feedback
 		});
 
 		// Add watcher to subscriptions for cleanup on deactivation
