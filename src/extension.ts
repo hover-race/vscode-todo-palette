@@ -149,15 +149,34 @@ export async function activate(context: vscode.ExtensionContext) {
 						if (originalTask.endsWith(' [DONE]')) {
 							// Mark as pending (remove [DONE])
 							const baseTask = originalTask.replace(' [DONE]', '');
-							todoItems[index] = baseTask;
+							// Remove the item from its current position
+							todoItems.splice(index, 1);
+							// Find the index of the first done task
+							const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
+							// Insert the pending task before the first done task, or at the end if none are done
+							if (firstDoneIndex !== -1) {
+								todoItems.splice(firstDoneIndex, 0, baseTask);
+							} else {
+								todoItems.push(baseTask);
+							}
 							vscode.window.showInformationMessage(`Marked as pending: ${baseTask}`);
-							await saveTodoItems(todoItems); // Save after toggling
+							await saveTodoItems(todoItems); // Save after reordering
 							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
 						} else {
 							// Mark as done (append [DONE])
-							todoItems[index] = `${originalTask} [DONE]`;
+							const doneTask = `${originalTask} [DONE]`;
+							// Remove the item from its current position
+							todoItems.splice(index, 1);
+							// Find the index of the first done task
+							const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
+							// Insert the done task before the first existing done task, or at the end if none are done
+							if (firstDoneIndex !== -1) {
+								todoItems.splice(firstDoneIndex, 0, doneTask);
+							} else {
+								todoItems.push(doneTask);
+							}
 							vscode.window.showInformationMessage(`Marked as done: ${originalTask}`);
-							await saveTodoItems(todoItems); // Save after toggling
+							await saveTodoItems(todoItems); // Save after reordering
 							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
 						}
 						// Optionally update status bar if the toggled item was the latest one - Handled by updateStatusBar
