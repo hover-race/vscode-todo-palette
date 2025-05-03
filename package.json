@@ -5,6 +5,10 @@
   "version": "0.0.2",
   "publisher": "FoxLabs",
   "icon": "images/logo.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hover-race/vscode-todo-palette.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
