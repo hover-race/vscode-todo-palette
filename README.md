@@ -1,4 +1,4 @@
-# TODO List in Command Palette
+# TODO List in Command Palette 
 
 ![Extension Icon](https://raw.githubusercontent.com/hover-race/vscode-todo-palette/master/images/todo-logo.png)
 
@@ -20,9 +20,11 @@ Manage a TODO list directly from VS Code Command Palette
 
 
 
+### 0.0.5
+- Added emojis ✅
+- Added keybinding: Ctrl Shift T
 
-### 0.1.0 (Current)
+### 0.0.1
 - Add basic TODO list functionality: add, view, toggle done/pending, clear all tasks.
 - Save list to `.todo` file in the workspace.
 - Status bar integration showing the latest task.
-
