@@ -185,21 +185,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			await saveTodoItems(todoItems); // Save after adding
 			updateStatusBar(todoItems, myStatusBarItem); // Update status bar
 
-			// --- Dynamically register a command for the new task ---
-			// Sanitize task description for command ID
-			const sanitizedTask = newTask.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
-			const dynamicCommandId = `ASDF.${sanitizedTask}`;
-
-			// Register the command
-			const dynamicCommandDisposable = vscode.commands.registerCommand(dynamicCommandId, () => {
-				vscode.window.showInformationMessage(`Dynamic command triggered for: ${newTask}`);
-				// You could potentially add logic here, like marking the task done
-			});
-
-			// Add the disposable to the context's subscriptions for cleanup
-			context.subscriptions.push(dynamicCommandDisposable);
-			console.log(`Registered dynamic command: ${dynamicCommandId}`);
-			// ----------------------------------------------------
 
 			// Optionally, update the status bar or refresh the list view if you have one - Handled by updateStatusBar
 			// // Update status bar to show the latest task - Handled by updateStatusBar
