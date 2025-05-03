@@ -127,9 +127,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		// Special option for adding a new task
 		const addNewOptionLabel = "$(add) Add New Task";
+		const clearAllOptionLabel = "$(trash) Clear All Tasks";
 		const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
+		const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
 
-		const quickPickItems = [...taskItems, addNewOptionItem]; // Combine tasks and add option
+		// Combine tasks and special options
+		const quickPickItems = [...taskItems, addNewOptionItem, clearAllOptionItem]; 
 
 		const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
 			placeHolder: 'Select a TODO item or Add New',
@@ -140,6 +143,22 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (selectedQuickPickItem.label === addNewOptionLabel) {
 				// Trigger the Add TODO command if the special option was selected
 				vscode.commands.executeCommand('todo-list.addTodo');
+			} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
+				// Handle clearing all tasks
+				const confirm = await vscode.window.showWarningMessage(
+					'Are you sure you want to clear all TODO items? This cannot be undone.',
+					{ modal: true }, // Make the dialog modal
+					'Yes, Clear All'
+				);
+				if (confirm === 'Yes, Clear All') {
+					todoItems.length = 0; // Clear the array
+					await saveTodoItems(todoItems);
+					updateStatusBar(todoItems, myStatusBarItem);
+					vscode.window.showInformationMessage('TODO list cleared.');
+				} else {
+					// User cancelled
+					vscode.window.showInformationMessage('Clear operation cancelled.');
+				}
 			} else {
 				// Otherwise, toggle the done status of the selected task
 				const originalTask = selectedQuickPickItem.originalTask;
