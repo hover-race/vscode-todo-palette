@@ -146,8 +146,8 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 
 		// Special option for adding a new task
-		const addNewOptionLabel = "$(add) Add New Task";
-		const clearAllOptionLabel = "$(trash) Clear All Tasks";
+		const addNewOptionLabel = "➕ Add New Task"; // Use plus emoji
+		const clearAllOptionLabel = "🗑️ Clear All Tasks";
 		const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
 		const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
 
