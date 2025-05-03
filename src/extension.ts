@@ -132,13 +132,13 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (item.endsWith(' [DONE]')) {
 				const baseTask = item.replace(' [DONE]', '');
 				return {
-					label: `$(pass-filled) ${baseTask}`,
+					label: `✅ ${baseTask}`, // Use green check emoji
 					// description: "[$(check)]",
 					originalTask: item // Store original for reference
 				};
 			} else {
 				return {
-					label: `$(circle-large-outline) ${item}`,
+					label: `⬜️ ${item}`, // Use empty checkmark emoji
 					// description: "[$(blank)]",
 					originalTask: item // Store original for reference
 				};
