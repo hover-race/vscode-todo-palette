@@ -21,8 +21,8 @@
     "commands": [
       {
         "command": "todo-list.showList",
-        "title": "Show List",
-        "category": "TODO"
+        "title": "TODO List"
+
       },
       {
         "command": "todo-list.addTodo",
