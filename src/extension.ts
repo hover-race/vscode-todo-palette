@@ -148,7 +148,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			const quickPickItems = [...taskItems, addNewOptionItem, clearAllOptionItem];
 
 			const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
-				placeHolder: 'Select a TODO item, Add New, or Clear All',
+				placeHolder: 'TODO: Enter to mark as done',
 				ignoreFocusOut: true // Helps keep it open
 			});
 
