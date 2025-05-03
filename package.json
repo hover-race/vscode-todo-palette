@@ -28,7 +28,7 @@
       },
       {
         "command": "todo-list.addTodo",
-        "title": "TODO: Add Task",
+        "title": "Add Task",
         "category": "TODO"
       }
     ]
