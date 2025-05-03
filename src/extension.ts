@@ -1,25 +1,102 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Helper function to get the path to the .todo file
+function getTodoFilePath(): string | undefined {
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (!workspaceFolders || workspaceFolders.length === 0) {
+		vscode.window.showErrorMessage("No workspace folder open to store TODO list.");
+		return undefined;
+	}
+	// Use the first workspace folder
+	const folderPath = workspaceFolders[0].uri.fsPath;
+	return path.join(folderPath, '.todo');
+}
+
+// Helper function to load tasks from the file
+async function loadTodoItems(): Promise<string[]> {
+	const filePath = getTodoFilePath();
+	if (!filePath) return []; // Return empty if no path
+
+	try {
+		// Check if file exists
+		await fs.promises.access(filePath, fs.constants.F_OK);
+		// Read file
+		const fileContent = await fs.promises.readFile(filePath, 'utf8');
+		// Split into lines, filter out empty lines
+		return fileContent.split(/\r?\n/).filter(line => line.trim() !== '');
+	} catch (error) {
+		if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+			// File doesn't exist, return empty list (first run)
+			return [];
+		} else {
+			// Other error reading file
+			vscode.window.showErrorMessage(`Error loading TODO list: ${error instanceof Error ? error.message : String(error)}`);
+			return []; // Return empty on error
+		}
+	}
+}
+
+// Helper function to save tasks to the file
+async function saveTodoItems(items: string[]): Promise<void> {
+	console.log(`rrrrr saveTodoItems: ${items}`);
+	const filePath = getTodoFilePath();
+	if (!filePath) return; // Don't save if no path
+
+	try {
+		const fileContent = items.join('\n');
+		await fs.promises.writeFile(filePath, fileContent, 'utf8');
+	} catch (error) {
+		vscode.window.showErrorMessage(`Error saving TODO list: ${error instanceof Error ? error.message : String(error)}`);
+	}
+}
+
+// Helper function to update the status bar based on the latest pending task
+function updateStatusBar(items: string[], statusBarItem: vscode.StatusBarItem): void {
+	let latestPendingTask: string | undefined = undefined;
+	for (let i = items.length - 1; i >= 0; i--) {
+		if (!items[i].endsWith(' [DONE]')) {
+			latestPendingTask = items[i];
+			break;
+		}
+	}
+
+	if (latestPendingTask) {
+		statusBarItem.text = `$(checklist) TODO: ${latestPendingTask}`;
+		statusBarItem.tooltip = `Latest pending TODO: ${latestPendingTask}`;
+	} else {
+		// All tasks done or list is empty
+		statusBarItem.text = `$(check) All tasks done!`;
+		statusBarItem.tooltip = `All TODO tasks are completed.`;
+	}
+	statusBarItem.show(); // Ensure it's visible
+}
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "todo-list" is now active!');
 
-	// Simple in-memory storage for TODO items
-	let todoItems: string[] = ['Task A', 'Task B']; // Shared list
+	// Load TODO items from file or initialize if empty
+	let todoItems: string[] = await loadTodoItems();
+	console.log(`rrrrr loaded todoItems: ${todoItems}`);
+	// // Simple in-memory storage for TODO items - replaced by loading
+	// let todoItems: string[] = ['Task A', 'Task B']; // Shared list
 
 	// Create a status bar item
 	const myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-	myStatusBarItem.text = `$(checklist) TODOs`; // Example text with an icon
-	myStatusBarItem.tooltip = `View TODO List`;
-	// Optionally, assign a command to run when the item is clicked
+	// Initial status bar update after loading
+	updateStatusBar(todoItems, myStatusBarItem); 
+	// myStatusBarItem.text = `$(checklist) TODOs`; // Example text with an icon - replaced by updateStatusBar
+	// myStatusBarItem.tooltip = `View TODO List`; // - replaced by updateStatusBar
 	myStatusBarItem.command = 'todo-list.showList'; // Assign the command to show the list
-	myStatusBarItem.show();
+	// myStatusBarItem.show(); // Already called in updateStatusBar
 
 	// Add the status bar item to the context's subscriptions so it's disposed automatically
 	context.subscriptions.push(myStatusBarItem);
@@ -30,19 +107,19 @@ export function activate(context: vscode.ExtensionContext) {
 	const showListDisposable = vscode.commands.registerCommand('todo-list.showList', async () => {
 		// Use the shared todoItems list
 
-		// Map todoItems to QuickPickItems with status icons
+		// Map todoItems to QuickPickItems with status prefixes
 		const taskItems: vscode.QuickPickItem[] = todoItems.map(item => {
 			if (item.endsWith(' [DONE]')) {
 				const baseTask = item.replace(' [DONE]', '');
 				return {
-					label: `$(check) ${baseTask}`,
-					description: "Done",
+					label: `$(chreeck) ${baseTask}`,
+					// description: "Done", // Removed
 					originalTask: item // Store original for reference
 				};
 			} else {
 				return {
-					label: item,
-					description: "Pending",
+					label: `$(dash) ${item}`,
+					// description: "Pending", // Removed
 					originalTask: item // Store original for reference
 				};
 			}
@@ -56,7 +133,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
 			placeHolder: 'Select a TODO item or Add New',
-			matchOnDescription: true // Optional: Allow searching description field
+			// matchOnDescription: true // Description removed, so matching is not needed
 		});
 
 		if (selectedQuickPickItem) {
@@ -74,13 +151,16 @@ export function activate(context: vscode.ExtensionContext) {
 							const baseTask = originalTask.replace(' [DONE]', '');
 							todoItems[index] = baseTask;
 							vscode.window.showInformationMessage(`Marked as pending: ${baseTask}`);
+							await saveTodoItems(todoItems); // Save after toggling
+							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
 						} else {
 							// Mark as done (append [DONE])
 							todoItems[index] = `${originalTask} [DONE]`;
 							vscode.window.showInformationMessage(`Marked as done: ${originalTask}`);
+							await saveTodoItems(todoItems); // Save after toggling
+							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
 						}
-						// Optionally update status bar if the toggled item was the latest one
-						// This simple logic might need refinement for perfect status bar updates
+						// Optionally update status bar if the toggled item was the latest one - Handled by updateStatusBar
 					} else {
 						vscode.window.showWarningMessage(`Could not find task to toggle: ${originalTask}`);
 					}
@@ -101,6 +181,9 @@ export function activate(context: vscode.ExtensionContext) {
 			const newTask = taskDescription.trim();
 			todoItems.push(newTask);
 			vscode.window.showInformationMessage(`Added TODO: ${newTask}`);
+			console.log(`rrrrr Added TODO: ${newTask}`);
+			await saveTodoItems(todoItems); // Save after adding
+			updateStatusBar(todoItems, myStatusBarItem); // Update status bar
 
 			// --- Dynamically register a command for the new task ---
 			// Sanitize task description for command ID
@@ -118,10 +201,10 @@ export function activate(context: vscode.ExtensionContext) {
 			console.log(`Registered dynamic command: ${dynamicCommandId}`);
 			// ----------------------------------------------------
 
-			// Optionally, update the status bar or refresh the list view if you have one
-			// Update status bar to show the latest task
-			myStatusBarItem.text = `$(checklist) TODO: ${newTask}`;
-			myStatusBarItem.tooltip = `Latest TODO: ${newTask}`; // Update tooltip too
+			// Optionally, update the status bar or refresh the list view if you have one - Handled by updateStatusBar
+			// // Update status bar to show the latest task - Handled by updateStatusBar
+			// myStatusBarItem.text = `$(checklist) TODO: ${newTask}`;
+			// myStatusBarItem.tooltip = `Latest TODO: ${newTask}`; // Update tooltip too
 
 		} else if (taskDescription !== undefined) {
             // Handle empty input if the user didn't cancel
@@ -130,7 +213,8 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(addTodoDisposable);
 
-	// Command to mark a specific task as done via Quick Pick
+	// Command to mark a specific task as done via Quick Pick - REMOVED
+	/*
 	const markTaskDoneDisposable = vscode.commands.registerCommand('todo-list.markTaskDone', async () => {
 		const undoneItems = todoItems.filter(item => !item.endsWith(' [DONE]'));
 
@@ -159,6 +243,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(markTaskDoneDisposable);
+	*/
 
 	// --- Other Commands ---
 

@@ -2,7 +2,7 @@
   "name": "todo-list-asdf",
   "displayName": "TODO List",
   "description": "TODO list",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -19,7 +19,7 @@
       },
       {
         "command": "todo-list.combobulate",
-        "title": "Discombobulate"
+        "title": "DiscombobulateRR"
       },
       {
         "command": "todo-list.showList",
@@ -28,12 +28,7 @@
       },
       {
         "command": "todo-list.addTodo",
-        "title": "Add Task",
-        "category": "TODO"
-      },
-      {
-        "command": "todo-list.markTaskDone",
-        "title": "Mark Task Done",
+        "title": "TODO: Add Task",
         "category": "TODO"
       }
     ]
