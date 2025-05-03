@@ -1,10 +1,9 @@
-# todo-list README
+# TODO List in Command Palette
 
 ![Extension Icon](images/todo-logo.png)
 
-Simple VS Code extension to manage a TODO list directly within the editor.
+Manage a TODO list directly within the editor 
 
-- [x] Write this README.md file
 
 ## Features
 
