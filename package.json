@@ -31,6 +31,13 @@
       }
     ]
   },
+  "keybindings": [
+    {
+      "command": "todo-list.showList",
+      "key": "ctrl+shift+t",
+      "mac": "cmd+shift+t"
+    }
+  ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
