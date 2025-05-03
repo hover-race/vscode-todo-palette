@@ -237,7 +237,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		if (taskDescription && taskDescription.trim() !== '') {
 			const newTask = taskDescription.trim();
-			todoItems.push(newTask);
+			// Add new task to the beginning of the list
+			todoItems.unshift(newTask);
 			vscode.window.showInformationMessage(`Added TODO: ${newTask}`);
 			console.log(`rrrrr Added TODO: ${newTask}`);
 			await saveTodoItems(todoItems); // Save after adding
