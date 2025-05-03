@@ -1,10 +1,17 @@
 # todo-list README
 
-TODO list
-
-- [ ] Write this README.md file
+A simple TODO list directly within the editor - right in the Command Palette.
 
 ## Features
+
+*   **Add Tasks:** Quickly add new TODO items via an input box (`todo-list.addTodo`).
+*   **View & Manage Tasks:** Access your TODO list through a Quick Pick menu (`todo-list.showList`).
+    *   Click on a task to toggle its status between pending and done.
+    *   Done tasks are marked with `[DONE]` and moved below pending tasks.
+    *   An "Add New Task" option is available directly in the list view.
+    *   A "Clear All Tasks" option allows you to remove all items after confirmation.
+*   **Persistent Storage:** Your TODO list is saved in a `.todo` file in the root of your workspace.
+*   **Status Bar Integration:** Shows the latest pending task in the status bar. Clicking it opens the TODO list. Shows "All tasks done!" when the list is empty or all tasks are completed.
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
@@ -20,14 +27,7 @@ If you have any requirements or dependencies, add a section describing those and
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+This extension does not currently add any specific settings.
 
 ## Known Issues
 
@@ -36,6 +36,12 @@ Calling out known issues can help limit users opening duplicate issues against y
 ## Release Notes
 
 Users appreciate release notes as you update your extension.
+
+### 0.1.0 (Current)
+- Add basic TODO list functionality: add, view, toggle done/pending.
+- Save list to `.todo` file in the workspace.
+- Status bar integration showing the latest task.
+- Added a "Clear All Tasks" option with confirmation.
 
 ### 1.0.0
 
