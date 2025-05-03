@@ -20,14 +20,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "todo-list.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "todo-list.combobulate",
-        "title": "DiscombobulateRR"
-      },
-      {
         "command": "todo-list.showList",
         "title": "Show List",
         "category": "TODO"

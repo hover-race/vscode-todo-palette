@@ -83,35 +83,28 @@ export async function activate(context: vscode.ExtensionContext) {
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "todo-list" is now active!');
 
-	// Load TODO items from file or initialize if empty
-	let todoItems: string[] = await loadTodoItems();
-	console.log(`rrrrr loaded todoItems: ${todoItems}`);
-	// // Simple in-memory storage for TODO items - replaced by loading
-	// let todoItems: string[] = ['Task A', 'Task B']; // Shared list
 
 	// Create a status bar item
 	const myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-	// Initial status bar update after loading
-	updateStatusBar(todoItems, myStatusBarItem); 
-	// myStatusBarItem.text = `$(checklist) TODOs`; // Example text with an icon - replaced by updateStatusBar
-	// myStatusBarItem.tooltip = `View TODO List`; // - replaced by updateStatusBar
-	myStatusBarItem.command = 'todo-list.showList'; // Assign the command to show the list
-	// myStatusBarItem.show(); // Already called in updateStatusBar
-
-	// Add the status bar item to the context's subscriptions so it's disposed automatically
+	// Initial status bar update requires loading the list for the current workspace
+	const initialItems = await loadTodoItems();
+	updateStatusBar(initialItems, myStatusBarItem); 
+	myStatusBarItem.command = 'todo-list.showList';
 	context.subscriptions.push(myStatusBarItem);
 
 	// --- File Watcher for .todo file ---
-	const todoFilePath = getTodoFilePath();
+	const todoFilePath = getTodoFilePath(); // Get path for potential watcher setup
 	if (todoFilePath) {
+		// Base watcher on the specific file path derived from the current workspace
 		const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.workspace.workspaceFolders![0], path.basename(todoFilePath)));
 
 		watcher.onDidChange(async () => {
-			console.log('.todo file changed, reloading...');
-			const newItems = await loadTodoItems();
-			// Update the shared list - crucial to reassign for other commands to see the change
-			todoItems = newItems; 
-			updateStatusBar(todoItems, myStatusBarItem);
+			console.log('.todo file changed, reloading for current workspace...');
+			// Load items specifically for the workspace the change occurred in
+			const currentItems = await loadTodoItems();
+			// // Update the shared list - REMOVED Global state
+			// todoItems = newItems; 
+			updateStatusBar(currentItems, myStatusBarItem);
 		});
 
 		// Add watcher to subscriptions for cleanup on deactivation
@@ -124,12 +117,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Command to show the TODO list dropdown
 	const showListDisposable = vscode.commands.registerCommand('todo-list.showList', async () => {
-		// Use the shared todoItems list
+		// Load items for the *current* workspace each time the command is run
+		let todoItems = await loadTodoItems();
 
-		// Function to display the Quick Pick, allowing it to be called recursively
-		const showPicker = async () => {
-			// Map todoItems to QuickPickItems with status prefixes
-			const taskItems: vscode.QuickPickItem[] = todoItems.map(item => {
+		// Function to display the Quick Pick, now takes items and status bar as args
+		const showPicker = async (items: string[], statusBarItem: vscode.StatusBarItem) => {
+			// Map CURRENT todoItems to QuickPickItems
+			const taskItems: vscode.QuickPickItem[] = items.map(item => {
 				if (item.endsWith(' [DONE]')) {
 					const baseTask = item.replace(' [DONE]', '');
 					return {
@@ -146,7 +140,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 			// Special options
 			const addNewOptionLabel = "➕ Add New Task";
-			const clearAllOptionLabel = "🗑️ Clear All Tasks"; // User updated this emoji
+			const clearAllOptionLabel = "🗑️ Clear All Tasks";
 			const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
 			const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
 
@@ -155,17 +149,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
 			const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
 				placeHolder: 'Select a TODO item, Add New, or Clear All',
-				// Keep the picker open if the user selects an item to toggle
-				ignoreFocusOut: true // Helps keep it open, but re-showing is the key
+				ignoreFocusOut: true // Helps keep it open
 			});
 
 			if (selectedQuickPickItem) {
 				if (selectedQuickPickItem.label === addNewOptionLabel) {
 					// Trigger the Add TODO command
 					await vscode.commands.executeCommand('todo-list.addTodo');
-					// Re-show the picker after adding (or attempting to add)
-					await showPicker(); 
-					// return; // Don't exit the showPicker function anymore
+					// Reload items after add command finishes before showing picker again
+					const updatedItems = await loadTodoItems(); 
+					await showPicker(updatedItems, statusBarItem);
 				} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
 					// Handle clearing all tasks
 					const confirm = await vscode.window.showWarningMessage(
@@ -174,83 +167,66 @@ export async function activate(context: vscode.ExtensionContext) {
 						'Yes, Clear All'
 					);
 					if (confirm === 'Yes, Clear All') {
-						todoItems.length = 0; // Clear the array
-						await saveTodoItems(todoItems);
-						updateStatusBar(todoItems, myStatusBarItem);
+						// Use the 'items' passed into showPicker
+						items.length = 0; // Clear the array
+						await saveTodoItems(items); // Save empty list
+						updateStatusBar(items, statusBarItem);
 						vscode.window.showInformationMessage('TODO list cleared.');
-						// Exit the picker after clearing
-						return; // Exit the showPicker function
+						return; // Exit the showPicker function after clearing
 					} else {
-						// User cancelled clear, show the picker again
-						await showPicker(); // Re-show picker
+						// User cancelled clear, show the picker again with the same items
+						await showPicker(items, statusBarItem); // Re-show picker
 					}
 				} else {
-					// Otherwise, toggle the done status of the selected task
+					// Toggle the done status of the selected task using the passed 'items'
 					const originalTask = selectedQuickPickItem.originalTask;
 					if (originalTask) {
-						const index = todoItems.findIndex(item => item === originalTask);
+						const index = items.findIndex(item => item === originalTask);
 						if (index !== -1) {
-							let taskDescriptionForMessage = '';
 							if (originalTask.endsWith(' [DONE]')) {
-								// Mark as pending - JUST update status, no reorder here
 								const baseTask = originalTask.replace(' [DONE]', '');
-								taskDescriptionForMessage = baseTask;
-								todoItems[index] = baseTask; // Update in place
-								// todoItems.splice(index, 1);
-								// const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
-								// if (firstDoneIndex !== -1) {
-								// 	todoItems.splice(firstDoneIndex, 0, baseTask);
-								// } else {
-								// 	todoItems.push(baseTask);
-								// }
+								items[index] = baseTask; // Update in place
 							} else {
-								// Mark as done - JUST update status, no reorder here
 								const doneTask = `${originalTask} [DONE]`;
-								taskDescriptionForMessage = originalTask;
-								todoItems[index] = doneTask; // Update in place
-								// todoItems.splice(index, 1);
-								// const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
-								// if (firstDoneIndex !== -1) {
-								// 	todoItems.splice(firstDoneIndex, 0, doneTask);
-								// } else {
-								// 	todoItems.push(doneTask);
-								// }
+								items[index] = doneTask; // Update in place
 							}
 							// Save the status change immediately
-							await saveTodoItems(todoItems); // Save status change
-							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
+							await saveTodoItems(items); // Save status change
+							updateStatusBar(items, statusBarItem); // Update status bar
 
 							// Re-show the picker with updated status but original order
-							await showPicker();
-
-							// --- Reordering after picker is closed ---
-							const pendingItems = todoItems.filter(item => !item.endsWith(' [DONE]'));
-							const doneItems = todoItems.filter(item => item.endsWith(' [DONE]'));
-							const reorderedItems = [...pendingItems, ...doneItems];
-
-							// Check if reordering actually changed the array to avoid unnecessary save/update
-							if (JSON.stringify(todoItems) !== JSON.stringify(reorderedItems)) {
-								console.log("Reordering TODO list after picker closed.");
-								todoItems = reorderedItems; // Update the main list
-								await saveTodoItems(todoItems); // Save the final reordered list
-								updateStatusBar(todoItems, myStatusBarItem); // Update status bar with final order
-							}
+							await showPicker(items, statusBarItem);
 						} else {
 							vscode.window.showWarningMessage(`Could not find task to toggle: ${originalTask}`);
-							await showPicker(); // Re-show picker even on error
+							await showPicker(items, statusBarItem); // Re-show picker even on error
 						}
 					} else {
-						// Should not happen with current logic, but good practice
 						vscode.window.showWarningMessage('Selected item had no original task data.');
-						await showPicker(); // Re-show picker
+						await showPicker(items, statusBarItem); // Re-show picker
 					}
 				}
 			}
 			// If selectedQuickPickItem is undefined (user pressed Esc), the function naturally exits
 		};
 
-		// Initial call to show the picker
-		await showPicker();
+		// Initial call to show the picker, passing the loaded items and status bar item
+		await showPicker(todoItems, myStatusBarItem);
+
+		// --- Reordering after picker is closed ---
+		// Load the final list state before reordering, in case it was modified by addTodo/clearAll
+		const finalItems = await loadTodoItems(); 
+		const pendingItems = finalItems.filter(item => !item.endsWith(' [DONE]'));
+		const doneItems = finalItems.filter(item => item.endsWith(' [DONE]'));
+		const reorderedItems = [...pendingItems, ...doneItems];
+
+		// Check if reordering actually changed the array 
+		if (JSON.stringify(finalItems) !== JSON.stringify(reorderedItems)) {
+			console.log("Reordering TODO list after picker closed.");
+			// Save the final reordered list
+			await saveTodoItems(reorderedItems); 
+			// Update status bar with final order (using the reordered list)
+			updateStatusBar(reorderedItems, myStatusBarItem); 
+		}
 	});
 	context.subscriptions.push(showListDisposable);
 
@@ -262,77 +238,22 @@ export async function activate(context: vscode.ExtensionContext) {
 		});
 
 		if (taskDescription && taskDescription.trim() !== '') {
+			// Load the current list for THIS workspace
+			let currentItems = await loadTodoItems();
 			const newTask = taskDescription.trim();
-			// Add new task to the beginning of the list
-			todoItems.unshift(newTask);
+			// Add new task to the beginning of the loaded list
+			currentItems.unshift(newTask);
 			vscode.window.showInformationMessage(`Added TODO: ${newTask}`);
 			console.log(`rrrrr Added TODO: ${newTask}`);
-			await saveTodoItems(todoItems); // Save after adding
-			updateStatusBar(todoItems, myStatusBarItem); // Update status bar
-
-
-			// Optionally, update the status bar or refresh the list view if you have one - Handled by updateStatusBar
-			// // Update status bar to show the latest task - Handled by updateStatusBar
-			// myStatusBarItem.text = `$(checklist) TODO: ${newTask}`;
-			// myStatusBarItem.tooltip = `Latest TODO: ${newTask}`; // Update tooltip too
-
+			// Save the modified list for THIS workspace
+			await saveTodoItems(currentItems); 
+			// Update status bar with the modified list
+			updateStatusBar(currentItems, myStatusBarItem); 
 		} else if (taskDescription !== undefined) {
-            // Handle empty input if the user didn't cancel
             vscode.window.showWarningMessage('Cannot add an empty TODO task.');
         }
 	});
 	context.subscriptions.push(addTodoDisposable);
-
-	// Command to mark a specific task as done via Quick Pick - REMOVED
-	/*
-	const markTaskDoneDisposable = vscode.commands.registerCommand('todo-list.markTaskDone', async () => {
-		const undoneItems = todoItems.filter(item => !item.endsWith(' [DONE]'));
-
-		if (undoneItems.length === 0) {
-			vscode.window.showInformationMessage('No pending TODO tasks to mark as done.');
-			return;
-		}
-
-		// Add prefix for display
-		const displayItems = undoneItems.map(item => `TODO: ${item}`);
-
-		const selectedDisplayItem = await vscode.window.showQuickPick(displayItems, {
-			placeHolder: 'Select a task to mark as done'
-		});
-
-		if (selectedDisplayItem) {
-			// Remove prefix to get the original item
-			const selectedItem = selectedDisplayItem.replace(/^TODO: /, ''); 
-
-			// Find the original index in the main list
-			const index = todoItems.findIndex(item => item === selectedItem);
-			if (index !== -1) {
-				todoItems[index] = `${selectedItem} [DONE]`;
-				vscode.window.showInformationMessage(`Marked as done: ${selectedItem}`);
-			}
-		}
-	});
-	context.subscriptions.push(markTaskDoneDisposable);
-	*/
-
-	// --- Other Commands ---
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('todo-list.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from TODO List!');
-	});
-
-	context.subscriptions.push(disposable);
-
-	const discombobulateDisposable = vscode.commands.registerCommand('todo-list.combobulate', () => {
-		vscode.window.showInformationMessage('Discombobulating...');
-	});
-
-	context.subscriptions.push(discombobulateDisposable);
 }
 
 // This method is called when your extension is deactivated
