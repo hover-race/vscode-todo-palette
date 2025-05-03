@@ -2,7 +2,7 @@
   "name": "todo-list-in-palette",
   "displayName": "TODO List in Palette",
   "description": "TODO list in the Command Palette",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "FoxLabs",
   "icon": "extension/images/todo-newicons.png",
   "repository": {
@@ -35,7 +35,7 @@
     {
       "command": "todo-list.showList",
       "key": "ctrl+shift+t",
-      "mac": "cmd+shift+t"
+      "mac": "ctrl+shift+t"
     }
   ],
   "scripts": {
