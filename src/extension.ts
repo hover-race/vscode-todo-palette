@@ -101,6 +101,26 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Add the status bar item to the context's subscriptions so it's disposed automatically
 	context.subscriptions.push(myStatusBarItem);
 
+	// --- File Watcher for .todo file ---
+	const todoFilePath = getTodoFilePath();
+	if (todoFilePath) {
+		const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.workspace.workspaceFolders![0], path.basename(todoFilePath)));
+
+		watcher.onDidChange(async () => {
+			console.log('.todo file changed, reloading...');
+			const newItems = await loadTodoItems();
+			// Update the shared list - crucial to reassign for other commands to see the change
+			todoItems = newItems; 
+			updateStatusBar(todoItems, myStatusBarItem);
+			vscode.window.showInformationMessage('TODO list reloaded from file.'); // Optional user feedback
+		});
+
+		// Add watcher to subscriptions for cleanup on deactivation
+		context.subscriptions.push(watcher);
+	} else {
+		console.warn('Could not get .todo file path, watcher not started.');
+	}
+
 	// --- TODO Commands ---
 
 	// Command to show the TODO list dropdown
@@ -112,14 +132,14 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (item.endsWith(' [DONE]')) {
 				const baseTask = item.replace(' [DONE]', '');
 				return {
-					label: `${baseTask} $(check) `,
-					description: "Done", // Removed
+					label: `${baseTask} `,
+					description: "$(check)",
 					originalTask: item // Store original for reference
 				};
 			} else {
 				return {
 					label: `${item}`,
-					// description: "Pending", // Removed
+					// description: "Pending",
 					originalTask: item // Store original for reference
 				};
 			}
