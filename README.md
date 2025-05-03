@@ -4,7 +4,7 @@
 
 Manage a TODO list directly from VS Code Command Palette
 
-![Animation of TODO list features](https://raw.githubusercontent.com/hover-race/vscode-todo-palette/master/images/todo-demo2.webp)
+![Animation of TODO list features](https://raw.githubusercontent.com/hover-race/vscode-todo-palette/master/extension/images/todo-demo2.webp)
 
 
 ## Features
