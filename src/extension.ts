@@ -162,10 +162,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
 			if (selectedQuickPickItem) {
 				if (selectedQuickPickItem.label === addNewOptionLabel) {
-					// Trigger the Add TODO command - this exits the loop implicitly
+					// Trigger the Add TODO command
 					await vscode.commands.executeCommand('todo-list.addTodo');
-					// Picker will close after input box, no need to re-show here
-					return; // Exit the showPicker function
+					// Re-show the picker after adding (or attempting to add)
+					await showPicker(); 
+					// return; // Don't exit the showPicker function anymore
 				} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
 					// Handle clearing all tasks
 					const confirm = await vscode.window.showWarningMessage(
