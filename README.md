@@ -2,7 +2,9 @@
 
 ![Extension Icon](images/todo-logo.png)
 
-Manage a TODO list directly within the editor 
+Manage a TODO list directly from VS Code Command Palette
+
++![Animation of TODO list features](images/todo-demo.gif)
 
 
 ## Features
@@ -17,7 +19,6 @@ Manage a TODO list directly within the editor
 *   **Status Bar Integration:** Shows the latest pending task in the status bar. Clicking it opens the TODO list. Shows "All tasks done!" when the list is empty or all tasks are completed.
 
 
-+![Animation of TODO list features](images/todo-demo.gif)
 
 
 ### 0.1.0 (Current)
