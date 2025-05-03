@@ -132,14 +132,14 @@ export async function activate(context: vscode.ExtensionContext) {
 			if (item.endsWith(' [DONE]')) {
 				const baseTask = item.replace(' [DONE]', '');
 				return {
-					label: `${baseTask} `,
-					description: "$(check)",
+					label: `$(pass-filled) ${baseTask}`,
+					// description: "[$(check)]",
 					originalTask: item // Store original for reference
 				};
 			} else {
 				return {
-					label: `${item}`,
-					// description: "Pending",
+					label: `$(circle-large-outline) ${item}`,
+					// description: "[$(blank)]",
 					originalTask: item // Store original for reference
 				};
 			}

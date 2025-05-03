@@ -1,4 +1,4 @@
-# todo-list README
+# TODO List in Command Palette
 
 A simple TODO list directly within the editor - right in the Command Palette.
 
@@ -10,14 +10,14 @@ A simple TODO list directly within the editor - right in the Command Palette.
     *   Done tasks are marked with `[DONE]` and moved below pending tasks.
     *   An "Add New Task" option is available directly in the list view.
     *   A "Clear All Tasks" option allows you to remove all items after confirmation.
-*   **Persistent Storage:** Your TODO list is saved in a `.todo` file in the root of your workspace.
+*   **Plain Text Storage:** Your TODO list is saved as plain text in a `.todo` file in your workspace root. You can directly edit this file, and the extension will automatically reload the changes.
 *   **Status Bar Integration:** Shows the latest pending task in the status bar. Clicking it opens the TODO list. Shows "All tasks done!" when the list is empty or all tasks are completed.
 
 Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
 For example if there is an image subfolder under your extension project workspace:
 
-\!\[feature X\]\(images/feature-x.png\)
+\!\[feature X\]\(vs-todo-list.png\)
 
 > Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
 
