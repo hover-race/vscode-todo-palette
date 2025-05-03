@@ -127,104 +127,130 @@ export async function activate(context: vscode.ExtensionContext) {
 	const showListDisposable = vscode.commands.registerCommand('todo-list.showList', async () => {
 		// Use the shared todoItems list
 
-		// Map todoItems to QuickPickItems with status prefixes
-		const taskItems: vscode.QuickPickItem[] = todoItems.map(item => {
-			if (item.endsWith(' [DONE]')) {
-				const baseTask = item.replace(' [DONE]', '');
-				return {
-					label: `✅ ${baseTask}`, // Use green check emoji
-					// description: "[$(check)]",
-					originalTask: item // Store original for reference
-				};
-			} else {
-				return {
-					label: `⬜️ ${item}`, // Use empty checkmark emoji
-					// description: "[$(blank)]",
-					originalTask: item // Store original for reference
-				};
-			}
-		});
-
-		// Special option for adding a new task
-		const addNewOptionLabel = "➕ Add New Task"; // Use plus emoji
-		const clearAllOptionLabel = "🗑️ Clear All Tasks";
-		const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
-		const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
-
-		// Combine tasks and special options
-		const quickPickItems = [...taskItems, addNewOptionItem, clearAllOptionItem]; 
-
-		const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
-			placeHolder: 'Select a TODO item or Add New',
-			// matchOnDescription: true // Description removed, so matching is not needed
-		});
-
-		if (selectedQuickPickItem) {
-			if (selectedQuickPickItem.label === addNewOptionLabel) {
-				// Trigger the Add TODO command if the special option was selected
-				vscode.commands.executeCommand('todo-list.addTodo');
-			} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
-				// Handle clearing all tasks
-				const confirm = await vscode.window.showWarningMessage(
-					'Are you sure you want to clear all TODO items? This cannot be undone.',
-					{ modal: true }, // Make the dialog modal
-					'Yes, Clear All'
-				);
-				if (confirm === 'Yes, Clear All') {
-					todoItems.length = 0; // Clear the array
-					await saveTodoItems(todoItems);
-					updateStatusBar(todoItems, myStatusBarItem);
-					vscode.window.showInformationMessage('TODO list cleared.');
+		// Function to display the Quick Pick, allowing it to be called recursively
+		const showPicker = async () => {
+			// Map todoItems to QuickPickItems with status prefixes
+			const taskItems: vscode.QuickPickItem[] = todoItems.map(item => {
+				if (item.endsWith(' [DONE]')) {
+					const baseTask = item.replace(' [DONE]', '');
+					return {
+						label: `✅ ${baseTask}`, // Use green check emoji
+						originalTask: item // Store original for reference
+					};
 				} else {
-					// User cancelled
-					vscode.window.showInformationMessage('Clear operation cancelled.');
+					return {
+						label: `⬜️ ${item}`, // Use empty checkmark emoji
+						originalTask: item // Store original for reference
+					};
 				}
-			} else {
-				// Otherwise, toggle the done status of the selected task
-				const originalTask = selectedQuickPickItem.originalTask;
-				if (originalTask) {
-					const index = todoItems.findIndex(item => item === originalTask);
-					if (index !== -1) {
-						if (originalTask.endsWith(' [DONE]')) {
-							// Mark as pending (remove [DONE])
-							const baseTask = originalTask.replace(' [DONE]', '');
-							// Remove the item from its current position
-							todoItems.splice(index, 1);
-							// Find the index of the first done task
-							const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
-							// Insert the pending task before the first done task, or at the end if none are done
-							if (firstDoneIndex !== -1) {
-								todoItems.splice(firstDoneIndex, 0, baseTask);
-							} else {
-								todoItems.push(baseTask);
-							}
-							vscode.window.showInformationMessage(`Marked as pending: ${baseTask}`);
-							await saveTodoItems(todoItems); // Save after reordering
-							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
-						} else {
-							// Mark as done (append [DONE])
-							const doneTask = `${originalTask} [DONE]`;
-							// Remove the item from its current position
-							todoItems.splice(index, 1);
-							// Find the index of the first done task
-							const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
-							// Insert the done task before the first existing done task, or at the end if none are done
-							if (firstDoneIndex !== -1) {
-								todoItems.splice(firstDoneIndex, 0, doneTask);
-							} else {
-								todoItems.push(doneTask);
-							}
-							vscode.window.showInformationMessage(`Marked as done: ${originalTask}`);
-							await saveTodoItems(todoItems); // Save after reordering
-							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
-						}
-						// Optionally update status bar if the toggled item was the latest one - Handled by updateStatusBar
+			});
+
+			// Special options
+			const addNewOptionLabel = "➕ Add New Task";
+			const clearAllOptionLabel = "🗑️ Clear All Tasks"; // User updated this emoji
+			const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
+			const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
+
+			// Combine tasks and special options
+			const quickPickItems = [...taskItems, addNewOptionItem, clearAllOptionItem];
+
+			const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
+				placeHolder: 'Select a TODO item, Add New, or Clear All',
+				// Keep the picker open if the user selects an item to toggle
+				ignoreFocusOut: true // Helps keep it open, but re-showing is the key
+			});
+
+			if (selectedQuickPickItem) {
+				if (selectedQuickPickItem.label === addNewOptionLabel) {
+					// Trigger the Add TODO command - this exits the loop implicitly
+					await vscode.commands.executeCommand('todo-list.addTodo');
+					// Picker will close after input box, no need to re-show here
+					return; // Exit the showPicker function
+				} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
+					// Handle clearing all tasks
+					const confirm = await vscode.window.showWarningMessage(
+						'Are you sure you want to clear all TODO items? This cannot be undone.',
+						{ modal: true },
+						'Yes, Clear All'
+					);
+					if (confirm === 'Yes, Clear All') {
+						todoItems.length = 0; // Clear the array
+						await saveTodoItems(todoItems);
+						updateStatusBar(todoItems, myStatusBarItem);
+						vscode.window.showInformationMessage('TODO list cleared.');
+						// Exit the picker after clearing
+						return; // Exit the showPicker function
 					} else {
-						vscode.window.showWarningMessage(`Could not find task to toggle: ${originalTask}`);
+						// User cancelled clear, show the picker again
+						await showPicker(); // Re-show picker
+					}
+				} else {
+					// Otherwise, toggle the done status of the selected task
+					const originalTask = selectedQuickPickItem.originalTask;
+					if (originalTask) {
+						const index = todoItems.findIndex(item => item === originalTask);
+						if (index !== -1) {
+							let taskDescriptionForMessage = '';
+							if (originalTask.endsWith(' [DONE]')) {
+								// Mark as pending - JUST update status, no reorder here
+								const baseTask = originalTask.replace(' [DONE]', '');
+								taskDescriptionForMessage = baseTask;
+								todoItems[index] = baseTask; // Update in place
+								// todoItems.splice(index, 1);
+								// const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
+								// if (firstDoneIndex !== -1) {
+								// 	todoItems.splice(firstDoneIndex, 0, baseTask);
+								// } else {
+								// 	todoItems.push(baseTask);
+								// }
+							} else {
+								// Mark as done - JUST update status, no reorder here
+								const doneTask = `${originalTask} [DONE]`;
+								taskDescriptionForMessage = originalTask;
+								todoItems[index] = doneTask; // Update in place
+								// todoItems.splice(index, 1);
+								// const firstDoneIndex = todoItems.findIndex(item => item.endsWith(' [DONE]'));
+								// if (firstDoneIndex !== -1) {
+								// 	todoItems.splice(firstDoneIndex, 0, doneTask);
+								// } else {
+								// 	todoItems.push(doneTask);
+								// }
+							}
+							// Save the status change immediately
+							await saveTodoItems(todoItems); // Save status change
+							updateStatusBar(todoItems, myStatusBarItem); // Update status bar
+
+							// Re-show the picker with updated status but original order
+							await showPicker();
+
+							// --- Reordering after picker is closed ---
+							const pendingItems = todoItems.filter(item => !item.endsWith(' [DONE]'));
+							const doneItems = todoItems.filter(item => item.endsWith(' [DONE]'));
+							const reorderedItems = [...pendingItems, ...doneItems];
+
+							// Check if reordering actually changed the array to avoid unnecessary save/update
+							if (JSON.stringify(todoItems) !== JSON.stringify(reorderedItems)) {
+								console.log("Reordering TODO list after picker closed.");
+								todoItems = reorderedItems; // Update the main list
+								await saveTodoItems(todoItems); // Save the final reordered list
+								updateStatusBar(todoItems, myStatusBarItem); // Update status bar with final order
+							}
+						} else {
+							vscode.window.showWarningMessage(`Could not find task to toggle: ${originalTask}`);
+							await showPicker(); // Re-show picker even on error
+						}
+					} else {
+						// Should not happen with current logic, but good practice
+						vscode.window.showWarningMessage('Selected item had no original task data.');
+						await showPicker(); // Re-show picker
 					}
 				}
 			}
-		}
+			// If selectedQuickPickItem is undefined (user pressed Esc), the function naturally exits
+		};
+
+		// Initial call to show the picker
+		await showPicker();
 	});
 	context.subscriptions.push(showListDisposable);
 
