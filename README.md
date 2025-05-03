@@ -1,10 +1,10 @@
 # TODO List in Command Palette 
 
-![Extension Icon](https://raw.githubusercontent.com/hover-race/vscode-todo-palette/master/images/todo-logo.png)
+![Extension Icon](https://raw.githubusercontent.com/hover-race/vscode-todo-palette/master/extension/images/todo-newicons.png)
 
 Manage a TODO list directly from VS Code Command Palette
 
-+![Animation of TODO list features](https://raw.githubusercontent.com/hover-race/vscode-todo-palette/master/images/todo-demo.gif)
+![Animation of TODO list features](https://raw.githubusercontent.com/hover-race/vscode-todo-palette/master/images/todo-demo2.webp)
 
 
 ## Features
