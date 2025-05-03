@@ -2,7 +2,7 @@
   "name": "todo-list-in-palette",
   "displayName": "TODO List in Palette",
   "description": "TODO list in the Command Palette",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "FoxLabs",
   "icon": "extension/images/logo2.png",
   "repository": {
