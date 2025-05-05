@@ -16,6 +16,17 @@ function getTodoFilePath(): string | undefined {
 	return path.join(folderPath, '.todo');
 }
 
+// Helper function to get the path to the .done file
+function getDoneFilePath(): string | undefined {
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (!workspaceFolders || workspaceFolders.length === 0) {
+		// No workspace, error already shown by getTodoFilePath usually
+		return undefined;
+	}
+	const folderPath = workspaceFolders[0].uri.fsPath;
+	return path.join(folderPath, '.done');
+}
+
 // Helper function to load tasks from the file
 async function loadTodoItems(): Promise<string[]> {
 	const filePath = getTodoFilePath();
@@ -54,26 +65,69 @@ async function saveTodoItems(items: string[]): Promise<void> {
 	}
 }
 
-// Helper function to update the status bar based on the first pending item
+// Helper function to update the status bar based on the latest pending task
 function updateStatusBar(items: string[], statusBarItem: vscode.StatusBarItem): void {
-	let firstPendingTask: string | undefined = undefined;
-	for (const item of items) {
-		if (!item.endsWith(' [DONE]')) {
-			firstPendingTask = item;
-			break; // Found the first one, stop looking
+	let latestPendingTask: string | undefined = undefined;
+	for (let i = items.length - 1; i >= 0; i--) {
+		if (!items[i].endsWith(' [DONE]')) {
+			latestPendingTask = items[i];
+			break;
 		}
 	}
 
-	if (firstPendingTask) {
-		// Found a pending task
-		statusBarItem.text = `TODO: ${firstPendingTask}`;
-		statusBarItem.tooltip = `Next pending TODO: ${firstPendingTask}`;
+	if (latestPendingTask) {
+		statusBarItem.text = `$(checklist) TODO: ${latestPendingTask}`;
+		statusBarItem.tooltip = `Latest pending TODO: ${latestPendingTask}`;
 	} else {
 		// All tasks done or list is empty
-		statusBarItem.text = `✅ All tasks done!`;
+		statusBarItem.text = `$(check) All tasks done!`;
 		statusBarItem.tooltip = `All TODO tasks are completed.`;
 	}
 	statusBarItem.show(); // Ensure it's visible
+}
+
+// Helper function to log a completed task to the .done file
+async function logTaskDone(taskDescription: string): Promise<void> {
+	const filePath = getDoneFilePath();
+	if (!filePath) {
+		console.warn("Could not get .done file path, skipping log.");
+		return;
+	}
+
+	const now = new Date();
+	const year = now.getFullYear();
+	const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Month is 0-indexed
+	const day = now.getDate().toString().padStart(2, '0');
+	const hours = now.getHours().toString().padStart(2, '0');
+	const minutes = now.getMinutes().toString().padStart(2, '0');
+	const timestamp = `${year}-${month}-${day} ${hours}:${minutes}`;
+
+	const logEntry = `${timestamp} ${taskDescription}\n`; // Add newline
+
+	try {
+		let existingContent = '';
+		try {
+			// Read existing content if file exists
+			existingContent = await fs.promises.readFile(filePath, 'utf8');
+		} catch (readError) {
+			if (readError instanceof Error && (readError as NodeJS.ErrnoException).code !== 'ENOENT') {
+				// If it's an error other than file not found, re-throw it
+				throw readError;
+			}
+			// If file doesn't exist (ENOENT), existingContent remains empty, which is fine
+		}
+
+		// Prepend the new entry to the existing content
+		const newContent = logEntry + existingContent;
+
+		// Write the entire new content back to the file, overwriting it
+		await fs.promises.writeFile(filePath, newContent, 'utf8');
+
+		// // Append to the file, creating it if it doesn't exist - OLD LOGIC
+		// await fs.promises.appendFile(filePath, logEntry, 'utf8');
+	} catch (error) {
+		vscode.window.showErrorMessage(`Error writing to .done file: ${error instanceof Error ? error.message : String(error)}`);
+	}
 }
 
 // This method is called when your extension is activated
@@ -142,16 +196,14 @@ export async function activate(context: vscode.ExtensionContext) {
 			// Special options
 			const addNewOptionLabel = "➕ Add New Task";
 			const clearAllOptionLabel = "🗑️ Clear All Tasks";
-			const editFileOptionLabel = "✏️ Edit .todo File";
 			const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
 			const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
-			const editFileOptionItem: vscode.QuickPickItem = { label: editFileOptionLabel };
 
 			// Combine tasks and special options
-			const quickPickItems = [...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
+			const quickPickItems = [...taskItems, addNewOptionItem, clearAllOptionItem];
 
 			const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
-				placeHolder: 'Select a TODO item, Add New, Edit File, or Clear All',
+				placeHolder: 'TODO: Enter to mark as done',
 				ignoreFocusOut: true // Helps keep it open
 			});
 
@@ -162,25 +214,6 @@ export async function activate(context: vscode.ExtensionContext) {
 					// Reload items after add command finishes before showing picker again
 					const updatedItems = await loadTodoItems(); 
 					await showPicker(updatedItems, statusBarItem);
-				} else if (selectedQuickPickItem.label === editFileOptionLabel) {
-					// Handle editing the file
-					const filePath = getTodoFilePath();
-					if (filePath) {
-						try {
-							const document = await vscode.workspace.openTextDocument(filePath);
-							await vscode.window.showTextDocument(document);
-							// Exit the picker after opening the file
-							return; 
-						} catch (error) {
-							vscode.window.showErrorMessage(`Error opening .todo file: ${error instanceof Error ? error.message : String(error)}`);
-							// Still show picker again even if opening failed
-							await showPicker(items, statusBarItem);
-						}
-					} else {
-						vscode.window.showErrorMessage('Could not find .todo file path.');
-						// Still show picker again
-						await showPicker(items, statusBarItem);
-					}
 				} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
 					// Handle clearing all tasks
 					const confirm = await vscode.window.showWarningMessage(
@@ -211,6 +244,8 @@ export async function activate(context: vscode.ExtensionContext) {
 							} else {
 								const doneTask = `${originalTask} [DONE]`;
 								items[index] = doneTask; // Update in place
+								// Log the task completion before saving the main list
+								await logTaskDone(originalTask);
 							}
 							// Save the status change immediately
 							await saveTodoItems(items); // Save status change
