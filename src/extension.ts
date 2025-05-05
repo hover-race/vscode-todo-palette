@@ -196,14 +196,16 @@ export async function activate(context: vscode.ExtensionContext) {
 			// Special options
 			const addNewOptionLabel = "➕ Add New Task";
 			const clearAllOptionLabel = "🗑️ Clear All Tasks";
+			const editFileOptionLabel = "📝 Edit .todo File";
 			const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
 			const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
+			const editFileOptionItem: vscode.QuickPickItem = { label: editFileOptionLabel };
 
 			// Combine tasks and special options
-			const quickPickItems = [...taskItems, addNewOptionItem, clearAllOptionItem];
+			const quickPickItems = [...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
 
 			const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
-				placeHolder: 'TODO: Enter to mark as done',
+				placeHolder: 'Select a TODO item, Add New, Edit File, or Clear All',
 				ignoreFocusOut: true // Helps keep it open
 			});
 
@@ -214,6 +216,25 @@ export async function activate(context: vscode.ExtensionContext) {
 					// Reload items after add command finishes before showing picker again
 					const updatedItems = await loadTodoItems(); 
 					await showPicker(updatedItems, statusBarItem);
+				} else if (selectedQuickPickItem.label === editFileOptionLabel) {
+					// Re-added: Handle editing the file
+					const filePath = getTodoFilePath();
+					if (filePath) {
+						try {
+							const document = await vscode.workspace.openTextDocument(filePath);
+							await vscode.window.showTextDocument(document);
+							// Exit the picker after opening the file
+							return; 
+						} catch (error) {
+							vscode.window.showErrorMessage(`Error opening .todo file: ${error instanceof Error ? error.message : String(error)}`);
+							// Still show picker again even if opening failed
+							await showPicker(items, statusBarItem);
+						}
+					} else {
+						vscode.window.showErrorMessage('Could not find .todo file path.');
+						// Still show picker again
+						await showPicker(items, statusBarItem);
+					}
 				} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
 					// Handle clearing all tasks
 					const confirm = await vscode.window.showWarningMessage(
