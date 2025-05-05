@@ -18,7 +18,9 @@ Manage a TODO list directly from VS Code Command Palette
 *   **Plain Text Storage:** Your TODO list is saved as plain text in a `.todo` file in your workspace root. You can directly edit this file, and the extension will automatically reload the changes.
 *   **Status Bar Integration:** Shows the latest pending task in the status bar. Clicking it opens the TODO list. Shows "All tasks done!" when the list is empty or all tasks are completed.
 
-
+### 0.0.9
+- Added a .done file
+- Added a button to edit .todo file
 
 ### 0.0.5
 - Added emojis ✅
