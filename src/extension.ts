@@ -54,22 +54,23 @@ async function saveTodoItems(items: string[]): Promise<void> {
 	}
 }
 
-// Helper function to update the status bar based on the latest pending task
+// Helper function to update the status bar based on the first pending item
 function updateStatusBar(items: string[], statusBarItem: vscode.StatusBarItem): void {
-	let latestPendingTask: string | undefined = undefined;
-	for (let i = items.length - 1; i >= 0; i--) {
-		if (!items[i].endsWith(' [DONE]')) {
-			latestPendingTask = items[i];
-			break;
+	let firstPendingTask: string | undefined = undefined;
+	for (const item of items) {
+		if (!item.endsWith(' [DONE]')) {
+			firstPendingTask = item;
+			break; // Found the first one, stop looking
 		}
 	}
 
-	if (latestPendingTask) {
-		statusBarItem.text = `$(checklist) TODO: ${latestPendingTask}`;
-		statusBarItem.tooltip = `Latest pending TODO: ${latestPendingTask}`;
+	if (firstPendingTask) {
+		// Found a pending task
+		statusBarItem.text = `TODO: ${firstPendingTask}`;
+		statusBarItem.tooltip = `Next pending TODO: ${firstPendingTask}`;
 	} else {
 		// All tasks done or list is empty
-		statusBarItem.text = `$(check) All tasks done!`;
+		statusBarItem.text = `✅ All tasks done!`;
 		statusBarItem.tooltip = `All TODO tasks are completed.`;
 	}
 	statusBarItem.show(); // Ensure it's visible
@@ -141,14 +142,16 @@ export async function activate(context: vscode.ExtensionContext) {
 			// Special options
 			const addNewOptionLabel = "➕ Add New Task";
 			const clearAllOptionLabel = "🗑️ Clear All Tasks";
+			const editFileOptionLabel = "✏️ Edit .todo File";
 			const addNewOptionItem: vscode.QuickPickItem = { label: addNewOptionLabel };
 			const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
+			const editFileOptionItem: vscode.QuickPickItem = { label: editFileOptionLabel };
 
 			// Combine tasks and special options
-			const quickPickItems = [...taskItems, addNewOptionItem, clearAllOptionItem];
+			const quickPickItems = [...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
 
 			const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
-				placeHolder: 'TODO: Enter to mark as done',
+				placeHolder: 'Select a TODO item, Add New, Edit File, or Clear All',
 				ignoreFocusOut: true // Helps keep it open
 			});
 
@@ -159,6 +162,25 @@ export async function activate(context: vscode.ExtensionContext) {
 					// Reload items after add command finishes before showing picker again
 					const updatedItems = await loadTodoItems(); 
 					await showPicker(updatedItems, statusBarItem);
+				} else if (selectedQuickPickItem.label === editFileOptionLabel) {
+					// Handle editing the file
+					const filePath = getTodoFilePath();
+					if (filePath) {
+						try {
+							const document = await vscode.workspace.openTextDocument(filePath);
+							await vscode.window.showTextDocument(document);
+							// Exit the picker after opening the file
+							return; 
+						} catch (error) {
+							vscode.window.showErrorMessage(`Error opening .todo file: ${error instanceof Error ? error.message : String(error)}`);
+							// Still show picker again even if opening failed
+							await showPicker(items, statusBarItem);
+						}
+					} else {
+						vscode.window.showErrorMessage('Could not find .todo file path.');
+						// Still show picker again
+						await showPicker(items, statusBarItem);
+					}
 				} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
 					// Handle clearing all tasks
 					const confirm = await vscode.window.showWarningMessage(
