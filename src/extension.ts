@@ -53,7 +53,6 @@ async function loadTodoItems(): Promise<string[]> {
 
 // Helper function to save tasks to the file
 async function saveTodoItems(items: string[]): Promise<void> {
-	console.log(`rrrrr saveTodoItems: ${items}`);
 	const filePath = getTodoFilePath();
 	if (!filePath) return; // Don't save if no path
 
@@ -322,7 +321,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			// Add new task to the beginning of the loaded list
 			currentItems.unshift(newTask);
 			vscode.window.showInformationMessage(`Added TODO: ${newTask}`);
-			console.log(`rrrrr Added TODO: ${newTask}`);
 			// Save the modified list for THIS workspace
 			await saveTodoItems(currentItems); 
 			// Update status bar with the modified list
