@@ -212,7 +212,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						label: `➕ Add task: "${value}"`,
 						description: 'Press Enter to add this task'
 					};
-					quickPick.items = [addTaskWithSearchItem, ...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
+					quickPick.items = [addTaskWithSearchItem, ...taskItems, editFileOptionItem, clearAllOptionItem];
 				} else {
 					quickPick.items = [...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
 				}
@@ -277,7 +277,10 @@ export async function activate(context: vscode.ExtensionContext) {
 						await saveTodoItems(items); // Save empty list
 						updateStatusBar(items, statusBarItem);
 						vscode.window.showInformationMessage('TODO list cleared.');
-						return; // Exit the showPicker function after clearing
+						// Close the quick pick
+						quickPick.hide();
+						// Show the picker again with empty items
+						await showPicker(items, statusBarItem);
 					} else {
 						// User cancelled clear, show the picker again with the same items
 						await showPicker(items, statusBarItem); // Re-show picker
