@@ -200,23 +200,53 @@ export async function activate(context: vscode.ExtensionContext) {
 			const clearAllOptionItem: vscode.QuickPickItem = { label: clearAllOptionLabel };
 			const editFileOptionItem: vscode.QuickPickItem = { label: editFileOptionLabel };
 
-			// Combine tasks and special options
-			const quickPickItems = [...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
+			// Create a QuickPick with onDidChangeValue handler
+			const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem & { originalTask?: string }>();
+			quickPick.placeholder = 'Select a TODO item, Add New, Edit File, or Clear All';
+			quickPick.ignoreFocusOut = true;
 
-			const selectedQuickPickItem = await vscode.window.showQuickPick<vscode.QuickPickItem & { originalTask?: string }>(quickPickItems, {
-				placeHolder: 'Select a TODO item, Add New, Edit File, or Clear All',
-				ignoreFocusOut: true // Helps keep it open
+			// Add the dynamic "Add task" option when user types
+			quickPick.onDidChangeValue((value) => {
+				if (value.trim()) {
+					const addTaskWithSearchItem: vscode.QuickPickItem = {
+						label: `➕ Add task: "${value}"`,
+						description: 'Press Enter to add this task'
+					};
+					quickPick.items = [addTaskWithSearchItem, ...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
+				} else {
+					quickPick.items = [...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
+				}
 			});
 
-			if (selectedQuickPickItem) {
-				if (selectedQuickPickItem.label === addNewOptionLabel) {
+			// Set initial items
+			quickPick.items = [...taskItems, addNewOptionItem, editFileOptionItem, clearAllOptionItem];
+
+			// Handle selection
+			quickPick.onDidAccept(async () => {
+				const selected = quickPick.selectedItems[0];
+				if (!selected) return;
+
+				if (selected.label.startsWith('➕ Add task: "')) {
+					// Extract the task text from the label
+					const taskText = selected.label.replace('➕ Add task: "', '').replace('"', '');
+					// Add the new task
+					let currentItems = await loadTodoItems();
+					currentItems.unshift(taskText);
+					await saveTodoItems(currentItems);
+					updateStatusBar(currentItems, statusBarItem);
+					vscode.window.showInformationMessage(`Added TODO: ${taskText}`);
+					// Close the quick pick
+					quickPick.hide();
+					// Show the picker again with updated items
+					await showPicker(currentItems, statusBarItem);
+				} else if (selected.label === addNewOptionLabel) {
 					// Trigger the Add TODO command
 					await vscode.commands.executeCommand('todo-list.addTodo');
 					// Reload items after add command finishes before showing picker again
 					const updatedItems = await loadTodoItems(); 
 					await showPicker(updatedItems, statusBarItem);
-				} else if (selectedQuickPickItem.label === editFileOptionLabel) {
-					// Re-added: Handle editing the file
+				} else if (selected.label === editFileOptionLabel) {
+					// Handle editing the file
 					const filePath = getTodoFilePath();
 					if (filePath) {
 						try {
@@ -234,7 +264,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						// Still show picker again
 						await showPicker(items, statusBarItem);
 					}
-				} else if (selectedQuickPickItem.label === clearAllOptionLabel) {
+				} else if (selected.label === clearAllOptionLabel) {
 					// Handle clearing all tasks
 					const confirm = await vscode.window.showWarningMessage(
 						'Are you sure you want to clear all TODO items? This cannot be undone.',
@@ -254,7 +284,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 				} else {
 					// Toggle the done status of the selected task using the passed 'items'
-					const originalTask = selectedQuickPickItem.originalTask;
+					const originalTask = selected.originalTask;
 					if (originalTask) {
 						const index = items.findIndex(item => item === originalTask);
 						if (index !== -1) {
@@ -282,8 +312,10 @@ export async function activate(context: vscode.ExtensionContext) {
 						await showPicker(items, statusBarItem); // Re-show picker
 					}
 				}
-			}
-			// If selectedQuickPickItem is undefined (user pressed Esc), the function naturally exits
+			});
+
+			// Show the quick pick
+			quickPick.show();
 		};
 
 		// Initial call to show the picker, passing the loaded items and status bar item
